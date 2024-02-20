@@ -5,7 +5,7 @@ interface authInitialState{
         uid:string,
         email:string,
         name: string
-    } |undefined
+    } |undefined,
     isDarkTheme:boolean,
 }
 
