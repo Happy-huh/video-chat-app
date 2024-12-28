@@ -11,13 +11,13 @@ function useAuth() {
   useEffect(() => {
     const unSubscribed = onAuthStateChanged(firebaseAuth, (currentUser) => {
       console.log(currentUser);
-      if (!currentUser) navigate("/login");
+      if (!currentUser) {}
       else {
         dispatch(
           setUser({
-            uid: currentUser.uid,
-            email: currentUser.email,
-            name: currentUser.displayName,
+            uid: 'tester',
+            email: "randomtester@gmail.com",
+            name: 'random tester',
           })
         );
       }
