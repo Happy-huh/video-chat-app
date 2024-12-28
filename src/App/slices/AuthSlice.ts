@@ -1,17 +1,21 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-interface authInitialState{
-    userInfo:{
-        uid:string,
-        email:string,
+interface authInitialState {
+    userInfo: {
+        uid: string,
+        email: string,
         name: string
-    } |undefined,
-    isDarkTheme:boolean,
+    } | undefined,
+    isDarkTheme: boolean,
 }
 
-const initialState :authInitialState = {
-    userInfo: undefined,
-    isDarkTheme:false
+const initialState: authInitialState = {
+    userInfo: {
+        uid: 'tester',
+        email: "randomtester@gmail.com",
+        name: 'random tester',
+    },
+    isDarkTheme: false
 }
 
 export const authSlice = createSlice(
@@ -19,14 +23,14 @@ export const authSlice = createSlice(
         name: 'auth',
         initialState,
         reducers: {
-            changeTheme:(state,action)=> {
+            changeTheme: (state, action) => {
                 state.isDarkTheme = action.payload.isDarkTheme
             },
-            setUser : (state,action) => {
+            setUser: (state, action) => {
                 state.userInfo = action.payload
             }
         }
     }
 )
 
-export const {setUser, changeTheme} = authSlice.actions
+export const { setUser, changeTheme } = authSlice.actions
