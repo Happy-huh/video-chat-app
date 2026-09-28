@@ -95,7 +95,7 @@ function Dashboard() {
               </div>
               <EuiText size="m" color="subdued">
                 <p>
-                  Schedule meetings, launch instant 1-on-1 calls, or connect with
+                  Launch instant 1-on-1 calls, or connect with
                   entire teams in high-definition video.
                 </p>
               </EuiText>

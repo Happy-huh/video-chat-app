@@ -298,7 +298,7 @@ function Login() {
               </EuiFlexGroup>
               <EuiSpacer size="xs" />
               <EuiText size="s" color="subdued">
-                <p>One platform for seamless video conferencing and 1-on-1 calls</p>
+                <p>One platform for video conferencing and 1-on-1 calls</p>
               </EuiText>
             </div>
 
@@ -335,7 +335,7 @@ function Login() {
                       <EuiBadge color="primary">No signup</EuiBadge>
                     </div>
                     <EuiText size="xs" color="subdued">
-                      Test all features immediately with seeded dummy meetings & contacts.
+                      Test all features immediately with dummy meetings & contacts.
                     </EuiText>
                   </div>
                 </EuiFlexItem>
