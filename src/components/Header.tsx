@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAppSelector } from "../App/hooks";
-import { useDispatch } from "react-redux";
+import { useAppDispatch, useAppSelector } from "../App/hooks";
 import {
-  EuiButton,
+  EuiBadge,
   EuiButtonIcon,
   EuiFlexGroup,
   EuiFlexItem,
   EuiHeader,
   EuiText,
   EuiTextColor,
+  EuiToolTip,
 } from "@elastic/eui";
 import { signOut } from "firebase/auth";
 import { firebaseAuth } from "../utils/FirebaseConfig";
-import { changeTheme } from "../App/slices/AuthSlice";
+import { changeTheme, logout } from "../App/slices/AuthSlice";
 import {
   getCreateMeetingBreadCrumbs,
   getMeetingsBreadCrumbs,
@@ -21,20 +21,36 @@ import {
   getOneOnOneMeetingBreadCrumbs,
   getVideoConfernceBreadCrumbs,
 } from "../utils/breadCrumbs";
+import { BreadCrumbsType } from "../utils/types";
 
 function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const uname = String(useAppSelector((zoom) => zoom.auth.userInfo?.email));
-  const username = uname.slice(0, uname.indexOf("@"));
+  const dispatch = useAppDispatch();
+
+  const userInfo = useAppSelector((zoom) => zoom.auth.userInfo);
   const isDarkTheme = useAppSelector((zoom) => zoom.auth.isDarkTheme);
 
-  const [breadCrumbs, setbreadCrumbs] = useState([{ text: "Dashboard" }]);
-  const [isResponsive, setisResponsive] = useState(false);
-  const dispatch = useDispatch();
-  const logout = () => {
-    signOut(firebaseAuth);
+  const displayName =
+    userInfo?.name ||
+    (userInfo?.email ? userInfo.email.split("@")[0] : "User");
+
+  const [breadCrumbs, setbreadCrumbs] = useState<Array<BreadCrumbsType>>([
+    { text: "Dashboard" },
+  ]);
+
+  const handleLogout = async () => {
+    try {
+      if (firebaseAuth.currentUser) {
+        await signOut(firebaseAuth);
+      }
+    } catch (err) {
+      console.warn("Firebase signout error:", err);
+    }
+    dispatch(logout());
+    navigate("/login");
   };
+
   useEffect(() => {
     const { pathname } = location;
     if (pathname === "/createmeeting")
@@ -47,111 +63,111 @@ function Header() {
       setbreadCrumbs(getMyMeetingsBreadCrumbs(navigate));
     else if (pathname === "/meeting")
       setbreadCrumbs(getMeetingsBreadCrumbs(navigate));
+    else
+      setbreadCrumbs([{ text: "Dashboard", href: "#", onClick: () => navigate("/") }]);
   }, [location, navigate]);
 
   const invertTheme = () => {
-    const theme = localStorage.getItem("zoom-theme");
-    localStorage.setItem("zoom-theme", theme === "light" ? "dark" : "light");
     dispatch(changeTheme({ isDarkTheme: !isDarkTheme }));
   };
 
-  const section = [
-    {
-      items: [
-        <Link to="/">
-          <EuiText>
-            <h2 style={{ padding: "0 1vw" }}>
-              <EuiTextColor color="#0b56ff">zoom</EuiTextColor>
-            </h2>
-          </EuiText>
-        </Link>,
-      ],
-    },
-    {
-      items: [
-        <>
-          {username ? (
-            <EuiText>
-              <h3>
-                <EuiTextColor color="white">Hello, </EuiTextColor>
-                <EuiTextColor color="#0b5cff">{username}</EuiTextColor>
-              </h3>
-            </EuiText>
-          ) : null}
-        </>,
-      ],
-    },
-    {
-      items: [
-        <EuiFlexGroup
-          justifyContent="center"
-          alignItems="center"
-          direction="row"
-          style={{ gap: "2vw" }}
-        >
-          <EuiFlexItem grow={false} style={{ flexBasis: "fit-content" }}>
-            {isDarkTheme ? (
-              <EuiButtonIcon
-                onClick={invertTheme}
-                iconType="sun"
-                display="fill"
-                size="s"
-                color="warning"
-                aria-label="invert-theme-button"
-              />
-            ) : (
-              <EuiButtonIcon
-                onClick={invertTheme}
-                iconType="moon"
-                color="accent"
-                display="fill"
-                size="s"
-                aria-label="invert-theme-button"
-              />
-            )}
-          </EuiFlexItem>
-          <EuiFlexItem grow={false} style={{ flexBasis: "fit-content" }}>
-            <EuiButtonIcon
-              onClick={logout}
-              iconType="lock"
-              display="fill"
-              size="s"
-              aria-label="logout-button"
-            />
-          </EuiFlexItem>
-        </EuiFlexGroup>,
-      ],
-    },
-  ];
-  const responsiveSection = [
-    {
-      items: [
-        <Link to="/">
-          <EuiText>
-            <h2 style={{ padding: "0 1vw" }}>
-              <EuiTextColor color="#0b56ff">zoom</EuiTextColor>
-            </h2>
-          </EuiText>
-        </Link>,
-      ],
-    },
-  ];
+  const actionButtons = (
+    <EuiFlexGroup
+      justifyContent="center"
+      alignItems="center"
+      direction="row"
+      gutterSize="s"
+      responsive={false}
+    >
+      {userInfo?.isTestUser && (
+        <EuiFlexItem grow={false}>
+          <EuiBadge color="warning">Demo Mode</EuiBadge>
+        </EuiFlexItem>
+      )}
+      <EuiFlexItem grow={false}>
+        <EuiToolTip content={`Switch to ${isDarkTheme ? "light" : "dark"} mode`}>
+          <EuiButtonIcon
+            onClick={invertTheme}
+            iconType={isDarkTheme ? "sun" : "moon"}
+            display="fill"
+            size="s"
+            color={isDarkTheme ? "warning" : "primary"}
+            aria-label="Toggle dark mode"
+          />
+        </EuiToolTip>
+      </EuiFlexItem>
+      <EuiFlexItem grow={false}>
+        <EuiToolTip content="Log out of session">
+          <EuiButtonIcon
+            onClick={handleLogout}
+            iconType="exit"
+            display="fill"
+            size="s"
+            color="danger"
+            aria-label="Logout button"
+          />
+        </EuiToolTip>
+      </EuiFlexItem>
+    </EuiFlexGroup>
+  );
 
-  useEffect(() => {
-    if (window.innerWidth < 480) setisResponsive(true);
-  }, []);
+  const desktopSections = [
+    {
+      items: [
+        <Link to="/" style={{ textDecoration: "none" }}>
+          <EuiFlexGroup alignItems="center" gutterSize="s" responsive={false}>
+            <EuiFlexItem grow={false}>
+              <EuiText>
+                <h2
+                  style={{
+                    margin: 0,
+                    padding: "0 0.5rem",
+                    fontWeight: 800,
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  <EuiTextColor color="#0b5cff">MeetFlow</EuiTextColor>
+                </h2>
+              </EuiText>
+            </EuiFlexItem>
+          </EuiFlexGroup>
+        </Link>,
+      ],
+    },
+    {
+      items: [
+        displayName ? (
+          <EuiText size="s">
+            <span style={{ fontWeight: 500 }}>Hello, </span>
+            <strong style={{ color: "#0b5cff" }}>{displayName}</strong>
+          </EuiText>
+        ) : null,
+      ],
+    },
+    {
+      items: [actionButtons],
+    },
+  ];
 
   return (
     <>
       <EuiHeader
-        style={{ minHeight: "8vh" }}
-        theme="dark"
-        sections={isResponsive ? responsiveSection : section}
+        style={{
+          minHeight: "4rem",
+          borderBottom: isDarkTheme
+            ? "1px solid rgba(255, 255, 255, 0.1)"
+            : "1px solid #e7ecf2",
+        }}
+        theme={isDarkTheme ? "dark" : "default"}
+        sections={desktopSections}
       />
-      <EuiHeader
-        style={{ minHeight: "8vh" }}
-        sections={[{ breadcrumbs: breadCrumbs }]}
-      />
+      {location.pathname !== "/" && (
+        <EuiHeader
+          style={{ minHeight: "3rem" }}
+          theme={isDarkTheme ? "dark" : "default"}
+          sections={[{ breadcrumbs: breadCrumbs }]}
+        />
+      )}
     </>
   );
 }

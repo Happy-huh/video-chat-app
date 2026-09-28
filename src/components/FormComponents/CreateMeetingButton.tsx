@@ -9,23 +9,28 @@ function CreateMeetingButton({
 }: {
   createmeeting: () => void;
   isEdit: boolean;
-  closedFlyout: () => {};
+  closedFlyout?: (dataChanged?: boolean) => void;
 }) {
   const navigate = useNavigate();
+
   return (
-    <EuiFlexGroup>
+    <EuiFlexGroup gutterSize="m" responsive={false}>
       <EuiFlexItem>
         <EuiButton
           color="danger"
-          fill
-          onClick={() => (isEdit ? closedFlyout!() : navigate("/"))}
+          onClick={() => (isEdit && closedFlyout ? closedFlyout(false) : navigate("/"))}
         >
           Cancel
         </EuiButton>
       </EuiFlexItem>
       <EuiFlexItem>
-        <EuiButton fill onClick={createmeeting}>
-          {isEdit ? "Edit meeting" : "Create meeting"}
+        <EuiButton
+          fill
+          color="primary"
+          iconType="check"
+          onClick={createmeeting}
+        >
+          {isEdit ? "Save Changes" : "Create Meeting"}
         </EuiButton>
       </EuiFlexItem>
     </EuiFlexGroup>

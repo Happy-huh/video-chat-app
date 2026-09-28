@@ -1,6 +1,6 @@
 import { EuiDatePicker, EuiFormRow } from "@elastic/eui";
 import moment from "moment";
-import React, { useState } from "react";
+import React from "react";
 
 function MeetingDateField({
   selected,
@@ -10,10 +10,13 @@ function MeetingDateField({
   setStartDate: React.Dispatch<React.SetStateAction<moment.Moment>>;
 }) {
   return (
-    <EuiFormRow>
+    <EuiFormRow label="Meeting Date">
       <EuiDatePicker
         selected={selected}
-        onChange={(date) => setStartDate(date!)}
+        onChange={(date) => date && setStartDate(date)}
+        minDate={moment()}
+        dateFormat="MM/DD/YYYY"
+        placeholder="Select meeting date"
       />
     </EuiFormRow>
   );

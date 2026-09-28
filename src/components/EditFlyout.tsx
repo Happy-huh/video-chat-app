@@ -4,7 +4,6 @@ import useAuth from "../hooks/useAuth";
 import useFetchUsers from "../hooks/useFetchUsers";
 import UseToast from "../hooks/useToast";
 import moment from "moment";
-import { useAppSelector } from "../App/hooks";
 import { doc, updateDoc } from "firebase/firestore";
 import { firebaseDB } from "../utils/FirebaseConfig";
 import {
@@ -22,25 +21,32 @@ import MeetingMaximumMeetingField from "./FormComponents/MeetingMaximumMeetingFi
 import MeetingUsersField from "./FormComponents/MeetingUsersField";
 import MeetingDateField from "./FormComponents/MeetingDateField";
 import CreateMeetingButton from "./FormComponents/CreateMeetingButton";
+import { updateLocalDummyMeeting } from "../utils/testUserData";
 
 function EditFlyout({
   closedFlyout,
   meetings,
 }: {
-  closedFlyout: any;
+  closedFlyout: (dataChanged?: boolean) => void;
   meetings: MeetingType;
 }) {
   useAuth();
   const [users] = useFetchUsers();
   const [createToast] = UseToast();
-  const [size, setSize] = useState(1);
-  const [anyonecanjoin, setanyonecanjoin] = useState(false);
+
+  const [size, setSize] = useState<number>(Number(meetings.maxUsers) || 10);
+  const anyonecanjoin = meetings.meetingType === "anyone-can-join";
   const [meetingName, setMeetingName] = useState(meetings.meetingName);
   const [selectedUsers, setSelectedUsers] = useState<Array<UserType>>([]);
-  const [StartDate, setStartDate] = useState(moment(meetings.meetingDate));
+  const [startDate, setStartDate] = useState(
+    moment(meetings.meetingDate, ["L", "YYYY-MM-DD", "MM/DD/YYYY"])
+  );
   const [meetingType] = useState(meetings.meetingType);
-  const [status, setStatus] = useState(false);
-  const [showErrors] = useState<{
+
+  // Status switch is "Cancel meeting" - so if meeting.status is true (active), isCancelled is false
+  const [isCancelled, setIsCancelled] = useState(!meetings.status);
+
+  const [showErrors, setShowErrors] = useState<{
     meetingName: FieldErrorType;
     meetingUser: FieldErrorType;
   }>({
@@ -55,11 +61,11 @@ function EditFlyout({
   });
 
   useEffect(() => {
-    if (users) {
+    if (users && meetings.invitedUsers) {
       const foundUsers: Array<UserType> = [];
-      meetings.invitedUsers.forEach((user: string) => {
+      meetings.invitedUsers.forEach((userId: string) => {
         const findUser = users.find(
-          (tempUser: UserType) => tempUser.uid === user
+          (tempUser: UserType) => tempUser.uid === userId
         );
         if (findUser) foundUsers.push(findUser);
       });
@@ -71,20 +77,48 @@ function EditFlyout({
     setSelectedUsers(selectedoptions);
   };
 
-  const editMeeting = async () => {
-    const editedMeeting = {
+  const handleEditMeeting = async () => {
+    if (!meetingName.trim().length) {
+      setShowErrors({
+        meetingName: {
+          show: true,
+          message: ["Meeting title cannot be empty."],
+        },
+        meetingUser: { ...showErrors.meetingUser },
+      });
+      return;
+    }
+
+    const editedMeeting: MeetingType = {
       ...meetings,
-      meetingName,
+      meetingName: meetingName.trim(),
       meetingType,
-      invitedUsers: selectedUsers.map((user: UserType) => user.uid),
+      invitedUsers: anyonecanjoin
+        ? []
+        : selectedUsers.map((user: UserType) => user.uid),
       maxUsers: size,
-      meetingDate: StartDate.format("L"),
-      status: !status,
+      meetingDate: startDate.format("L"),
+      status: !isCancelled,
     };
-    delete editedMeeting.docId;
-    const docRef = doc(firebaseDB, "meetings", meetings.docId!);
-    await updateDoc(docRef, editedMeeting);
-    createToast({ title: "meeting updated successfully", type: "success" });
+
+    // Update in local dummy store (for test user / offline resilience)
+    updateLocalDummyMeeting(editedMeeting);
+
+    // Update in Firestore if docId exists and is remote
+    if (meetings.docId && !meetings.docId.startsWith("demo-meeting-")) {
+      try {
+        const docRef = doc(firebaseDB, "meetings", meetings.docId);
+        const { docId, ...payload } = editedMeeting;
+        await updateDoc(docRef, payload);
+      } catch (err) {
+        console.warn("Could not update remote Firestore document:", err);
+      }
+    }
+
+    createToast({
+      title: "Meeting updated successfully!",
+      type: "success",
+    });
     closedFlyout(true);
   };
 
@@ -92,29 +126,30 @@ function EditFlyout({
     <EuiFlyout ownFocus onClose={() => closedFlyout()}>
       <EuiFlyoutHeader hasBorder>
         <EuiTitle size="m">
-          <h2>{meetings.meetingName}</h2>
+          <h2>Edit Meeting Details</h2>
         </EuiTitle>
       </EuiFlyoutHeader>
       <EuiFlyoutBody>
         <EuiForm>
           <MeetingNameField
-            label="Meeting Name"
+            label="Meeting Title"
             placeHolder="Meeting Name"
             value={meetingName}
             setMeetingName={setMeetingName}
             isInvalid={showErrors.meetingName.show}
             error={showErrors.meetingName.message}
           />
+
           {anyonecanjoin ? (
             <MeetingMaximumMeetingField value={size} setValue={setSize} />
           ) : (
             <MeetingUsersField
-              label="Invite User"
+              label="Invited Participants"
               options={users}
               onChange={onUserChange}
               selectedOptions={selectedUsers}
               isClearable={false}
-              placeholder="select a user"
+              placeholder="Select contacts"
               singleSelection={
                 meetingType === "1-on-1" ? { asPlainText: true } : false
               }
@@ -122,21 +157,31 @@ function EditFlyout({
               error={showErrors.meetingUser.message}
             />
           )}
-          <MeetingDateField selected={StartDate} setStartDate={setStartDate} />
-          <EuiFormRow display="columnCompressedSwitch" label="cancel meeting">
+
+          <MeetingDateField selected={startDate} setStartDate={setStartDate} />
+
+          <EuiSpacer size="m" />
+
+          <EuiFormRow
+            display="columnCompressedSwitch"
+            label="Cancel meeting"
+            helpText="Toggle to cancel or reactivate this meeting"
+          >
             <EuiSwitch
               showLabel={false}
-              label="cancel meeting"
-              checked={status}
-              onChange={(e) => setStatus(e.target.checked)}
+              label="Cancel meeting"
+              checked={isCancelled}
+              onChange={(e) => setIsCancelled(e.target.checked)}
               compressed
             />
           </EuiFormRow>
-          <EuiSpacer />
+
+          <EuiSpacer size="l" />
+
           <CreateMeetingButton
-            createmeeting={editMeeting}
+            createmeeting={handleEditMeeting}
             isEdit={true}
-            closedFlyout={closedFlyout}
+            closedFlyout={() => closedFlyout(false)}
           />
         </EuiForm>
       </EuiFlyoutBody>

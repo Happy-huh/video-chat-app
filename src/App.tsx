@@ -1,7 +1,6 @@
 import {
   EuiGlobalToastList,
   EuiProvider,
-  EuiThemeColorMode,
   EuiThemeProvider,
 } from "@elastic/eui";
 import Login from "./pages/Login";
@@ -10,7 +9,6 @@ import "@elastic/eui/dist/eui_theme_light.css";
 import "@elastic/eui/dist/eui_theme_dark.css";
 import { Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./App/hooks";
-import { useEffect, useState } from "react";
 import CreateMeeting from "./pages/CreateMeeting";
 import OneonOneMeeting from "./pages/OneonOneMeeting";
 import { setToasts } from "./App/slices/meetingSlice";
@@ -23,25 +21,6 @@ function App() {
   const toasts = useAppSelector((zoom) => zoom.meetings.toasts);
   const dispatch = useAppDispatch();
   const isDarkTheme = useAppSelector((zoom) => zoom.auth.isDarkTheme);
-  const [theme, setTheme] = useState<EuiThemeColorMode>("light");
-  const [isInitialTheme, setisInitialTheme] = useState(true);
-
-  useEffect(() => {
-    const theme = localStorage.getItem("zoom-theme");
-    if (theme) {
-      setTheme(theme as EuiThemeColorMode);
-    } else {
-      localStorage.setItem("zoom-theme", "light");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isInitialTheme) {
-      setisInitialTheme(false);
-    } else {
-      window.location.reload();
-    }
-  }, [isDarkTheme]);
 
   const overrides = {
     colors: {
@@ -50,16 +29,19 @@ function App() {
     },
   };
 
-  const removeToast = (removeToast: { id: string }) => {
+  const removeToast = (removedToast: { id: string }) => {
     dispatch(
       setToasts(
-        toasts.filter((toast: { id: string }) => toast.id !== removeToast.id)
+        toasts.filter((toast: { id: string }) => toast.id !== removedToast.id)
       )
     );
   };
+
+  const colorMode = isDarkTheme ? "dark" : "light";
+
   return (
-    <EuiProvider>
-      <EuiThemeProvider modify={overrides}>
+    <EuiProvider colorMode={colorMode}>
+      <EuiThemeProvider colorMode={colorMode} modify={overrides}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Dashboard />} />
